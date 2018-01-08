@@ -5,7 +5,16 @@
  */
 package RTSP_test;
 
+import static RTSP_test.Server.RTSPBufferedReader;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 
 /**
@@ -14,6 +23,15 @@ import javax.swing.JOptionPane;
  */
 public class Client extends javax.swing.JFrame {
 
+    static String fileName;
+    static String status;
+    static BufferedReader RTSPBufferedReader;
+    static BufferedWriter RTSPBufferedWriter;
+    final static String CRLF = "\r\n";
+    int RTSPSeqNb = 0; //Sequence number of RTSP messages within the session
+    int RTSPid = 0; //ID of the RTSP session (given by the RTSP Server)
+    static int RTP_RCV_PORT = 25000;
+    static int RTSP_ID = 123456;
     /**
      * Creates new form Client
      */
@@ -31,29 +49,34 @@ public class Client extends javax.swing.JFrame {
     private void initComponents() {
 
         jTextField1 = new javax.swing.JTextField();
-        jButton1 = new javax.swing.JButton();
+        ok = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
-        jButton2 = new javax.swing.JButton();
-        jButton3 = new javax.swing.JButton();
+        start = new javax.swing.JButton();
+        stop = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Client");
 
-        jButton1.setText("OK");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
+        ok.setText("OK");
+        ok.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
+                okActionPerformed(evt);
             }
         });
 
         jLabel1.setText("Enter file name :");
 
-        jButton2.setText("Start");
-
-        jButton3.setText("Stop");
-        jButton3.addActionListener(new java.awt.event.ActionListener() {
+        start.setText("Start");
+        start.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton3ActionPerformed(evt);
+                startActionPerformed(evt);
+            }
+        });
+
+        stop.setText("Stop");
+        stop.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                stopActionPerformed(evt);
             }
         });
 
@@ -71,11 +94,11 @@ public class Client extends javax.swing.JFrame {
                                 .addComponent(jLabel1)
                                 .addGap(0, 97, Short.MAX_VALUE)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jButton1))
+                        .addComponent(ok))
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(jButton2)
+                        .addComponent(start)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jButton3)
+                        .addComponent(stop)
                         .addGap(0, 0, Short.MAX_VALUE))))
         );
         layout.setVerticalGroup(
@@ -86,33 +109,46 @@ public class Client extends javax.swing.JFrame {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jButton1))
+                    .addComponent(ok))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton2)
-                    .addComponent(jButton3))
+                    .addComponent(start)
+                    .addComponent(stop))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+    private void okActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okActionPerformed
         // TODO add your handling code here:
         
         //Test file exists
         File file = new File(jTextField1.getText());
         if (file.exists() && file.isFile()) {
             JOptionPane.showMessageDialog(this, "file exists, and it is a file !");
+            fileName =jTextField1.getText();
         }
         else{
             JOptionPane.showMessageDialog(this, "file not exists !");
         }
-    }//GEN-LAST:event_jButton1ActionPerformed
+        
+        //Send file name.
+        send_RTSP_request(fileName);
+        
+    }//GEN-LAST:event_okActionPerformed
 
-    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+    private void stopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_stopActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_jButton3ActionPerformed
+        
+        //Stop streaming
+    }//GEN-LAST:event_stopActionPerformed
+
+    private void startActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startActionPerformed
+        // TODO add your handling code here:
+        
+        //start streaming
+    }//GEN-LAST:event_startActionPerformed
 
     /**
      * @param args the command line arguments
@@ -148,13 +184,37 @@ public class Client extends javax.swing.JFrame {
             }
         });
         
+        try {
+            Socket theClient = new Socket("127.0.0.1", 8554);
+            //Set input and output stream filters:
+            RTSPBufferedReader = new BufferedReader(new InputStreamReader(theClient.getInputStream()));
+            RTSPBufferedWriter = new BufferedWriter(new OutputStreamWriter(theClient.getOutputStream()));
+        } catch (IOException ex) {
+            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    private int parse_server_response() {
+        int reply_code = 0;
+
+        return (reply_code);
+    }
+    
+    private void send_RTSP_request(String request) {
+        try {
+            RTSPBufferedWriter.write("filename : "+request + CRLF);
+            RTSPBufferedWriter.flush();
+        } catch (Exception ex) {
+            System.out.println("Exception caught: " + ex);
+        }
+
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
-    private javax.swing.JButton jButton3;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JTextField jTextField1;
+    private javax.swing.JButton ok;
+    private javax.swing.JButton start;
+    private javax.swing.JButton stop;
     // End of variables declaration//GEN-END:variables
 }

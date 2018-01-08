@@ -5,11 +5,36 @@
  */
 package RTSP_test;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  *
  * @author NattapatN
  */
 public class Server extends javax.swing.JFrame {
+
+    static String fileName;
+    static String status;
+    static BufferedReader RTSPBufferedReader;
+    static BufferedWriter RTSPBufferedWriter;
+    final static String CRLF = "\r\n";
+    int RTSPSeqNb = 0; //Sequence number of RTSP messages within the session
+    int RTSPid = 0; //ID of the RTSP session (given by the RTSP Server)
+    static int RTP_RCV_PORT = 25000;
+    static int RTSP_ID = 123456;
+    static int INIT;
+    static InetAddress ClientIPAddr;
+    static Socket RTSPsocket;
+    static int state;
 
     /**
      * Creates new form Server
@@ -27,17 +52,27 @@ public class Server extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        test = new javax.swing.JLabel();
+
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        test.setText("Status : ");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(test)
+                .addContainerGap(73, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(test)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         pack();
@@ -76,8 +111,50 @@ public class Server extends javax.swing.JFrame {
                 new Server().setVisible(true);
             }
         });
+
+        int RTSPport = 8554;// Integer.parseInt(argv[0]);
+
+        //Initiate TCP connection with the client for the RTSP session
+        ServerSocket listenSocket;
+        try {
+            listenSocket = new ServerSocket(RTSPport);
+            RTSPsocket = listenSocket.accept();
+            listenSocket.close();
+            //Get Client IP address
+            ClientIPAddr = RTSPsocket.getInetAddress();
+            //Initiate RTSPstate
+            state = INIT;
+
+            //Set input and output stream filters:
+            RTSPBufferedReader = new BufferedReader(new InputStreamReader(RTSPsocket.getInputStream()));
+            RTSPBufferedWriter = new BufferedWriter(new OutputStreamWriter(RTSPsocket.getOutputStream()));
+            boolean done=false;
+            String request = parse_RTSP_request(); //blocking
+            System.out.println(request);
+            
+        } catch (IOException ex) {
+            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    static private String parse_RTSP_request() {
+        String request="";
+        try {
+            request = RTSPBufferedReader.readLine();
+        } catch (IOException ex) {
+            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return (request);
     }
 
+    private void send_RTSP_response() {
+        try {
+        } catch (Exception ex) {
+            System.out.println("Exception caught: " + ex);
+            System.exit(0);
+        }
+    }
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JLabel test;
     // End of variables declaration//GEN-END:variables
 }
