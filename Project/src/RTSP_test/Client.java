@@ -5,7 +5,7 @@
  */
 package RTSP_test;
 
-import static RTSP_test.Server.RTSPBufferedReader;
+import static RTSP_test.Server1.RTSPBufferedReader;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -38,7 +38,6 @@ public class Client extends javax.swing.JFrame {
     public Client() {
         initComponents();
     }
-
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -124,7 +123,7 @@ public class Client extends javax.swing.JFrame {
         // TODO add your handling code here:
         
         //Test file exists
-        File file = new File(jTextField1.getText());
+        File file = new File("media/"+jTextField1.getText());
         if (file.exists() && file.isFile()) {
             JOptionPane.showMessageDialog(this, "file exists, and it is a file !");
             fileName =jTextField1.getText();
@@ -190,7 +189,7 @@ public class Client extends javax.swing.JFrame {
             RTSPBufferedReader = new BufferedReader(new InputStreamReader(theClient.getInputStream()));
             RTSPBufferedWriter = new BufferedWriter(new OutputStreamWriter(theClient.getOutputStream()));
         } catch (IOException ex) {
-            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Server1.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
@@ -200,14 +199,21 @@ public class Client extends javax.swing.JFrame {
         return (reply_code);
     }
     
-    private void send_RTSP_request(String request) {
+    private void send_RTSP_request(String request_type) {
         try {
-            RTSPBufferedWriter.write("filename : "+request + CRLF);
+            RTSPBufferedWriter.write("filename : "+request_type +" "+"RTSP/1.0"+CRLF);//header
+            RTSPBufferedWriter.write("CSeq: "+RTSPSeqNb+CRLF); //sequence number
+            if (request_type.equals("SETUP")) {
+                //click ok (prepare to start streaming)
+                
+            } else {
+                //else streaming
+                
+            }
             RTSPBufferedWriter.flush();
         } catch (Exception ex) {
             System.out.println("Exception caught: " + ex);
         }
-
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
